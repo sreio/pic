@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <!-- 引入样式 -->
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+</head>
+<body>
+<div id="app">
+    <el-form ref="form" :model="form" :rules="rules"  label-width="80px">
+        <el-form-item label="图片宽度" prop="width">
+            <el-input v-model.number="form.width"></el-input>
+        </el-form-item>
+        <el-form-item label="图片高度" prop="height">
+            <el-input v-model.number="form.height"></el-input>
+        </el-form-item>
+        <el-form-item label="图片类型">
+            <el-radio-group v-model="form.ext">
+                <el-radio value="png" label="png"></el-radio>
+                <el-radio value="jpg" label="jpg"></el-radio>
+                <el-radio value="jpeg" label="jpeg"></el-radio>
+                <el-radio value="gif" label="gif"></el-radio>
+            </el-radio-group>
+        </el-form-item>
+        <el-form-item v-if="form.ext == 'png' || form.ext == 'jpg' || form.ext == 'jpeg'" label="压缩等级">
+            <el-tooltip class="item" effect="dark" :content="tip" placement="top">
+                <i style="color:#F56C6C;" class="el-icon-warning"></i>
+            </el-tooltip>
+            <el-select v-model="form.level" filterable placeholder="请选择">
+                <el-option :label="0" :value="0"></el-option>
+                <el-option
+                  v-for="item in num"
+                  :key="item"
+                  :label="item"
+                  :value="item">
+                </el-option>
+            </el-select>
+        </el-form-item>
+        <el-form-item>
+            <el-button type="primary" @click="onSubmit">下载</el-button>
+            <el-button @click="resetForm">重置</el-button>
+        </el-form-item>
+    </el-form>
+</div>
+</body>
+<!-- import Vue before Element -->
+<script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
+<!-- <script src="https://cdn.jsdelivr.net/npm/vue@2"></script> -->
+<!-- 引入组件库 -->
+<script src="https://unpkg.com/element-ui/lib/index.js"></script>
+<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+<script>
+    new Vue({
+        el: '#app',
+        data: function() {
+            return {
+                form: {
+                    width: null,
+                    height: null,
+                    ext: "png",
+                    level: 0,
+                },
+                num: 9,
+                tip: "0不压缩, 9画质最差,体积最小",
+                rules: {
+                    width: [
+                        { required: true, message: '请输入图片宽度', trigger: 'blur' },
+                        { type: 'integer', message: '图片宽度必须为数字'},
+                    ],
+                    height: [
+                        { required: true, message: '请输入图片高度', trigger: 'blur' },
+                        { type: 'number', message: '图片高度必须为数字'},
+                    ]
+                }
+            }
+        },
+        watch:{
+            'form.ext'(){
+                this.num = this.form.ext == 'png' ? 9 : 100;
+                this.tip = this.form.ext == 'png' ? '0不压缩, 9画质最差,体积最小' : '100不压缩, 0画质最差,体积最小';
+                this.form.level = this.form.ext == 'png' ? 0 : 100;
+            }
+        },
+        methods: {
+            onSubmit() {
+                this.$refs["form"].validate((valid) => {
+                    if (valid) {
+                        this.download();
+                    } else {
+                        console.log('error submit!!');
+                        return false;
+                    }
+                });
+            },
+            resetForm() {
+                this.$refs["form"].resetFields();
+            },
+            download() {
+                axios({
+                    method: 'GET',
+                    url: "pic.php?width=" + this.form.width + "&height=" + this.form.height + "&ext=" + this.form.ext + "&level=" + this.form.level,
+                    responseType: 'blob'
+                })
+                    .then(function (response) {
+                        console.log(response);
+                        const filename = response.headers["content-disposition"];
+                        const blob = new Blob([response.data]);
+                        let downloadElement = document.createElement("a");
+                        let href = window.URL.createObjectURL(blob);
+                        downloadElement.href = href;
+                        downloadElement.download = decodeURIComponent(filename.split("filename=")[1]);
+                        document.body.appendChild(downloadElement);
+                        downloadElement.click();
+                        document.body.removeChild(downloadElement);
+                        window.URL.revokeObjectURL(href);
+                    })
+                    .catch(function (error) {
+                        console.log(error);
+                    });
+            },
+        }
+    })
+</script>
+</html>
